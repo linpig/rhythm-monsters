@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#241a52">
+<title>節奏小怪獸</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    background: #241a52; color: #fff;
+  }
+  button { font: inherit; cursor: pointer; }
+  #app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: clamp(20px, 3.2vw, 32px); letter-spacing: 2px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tools button {
+    border: 0; border-radius: 999px; padding: 10px 16px;
+    font-size: clamp(14px, 1.8vw, 18px); font-weight: 800;
+    background: #fff; color: #3b2a85; box-shadow: 0 4px 0 #0004;
+  }
+  .tools button:active { transform: translateY(3px); box-shadow: 0 1px 0 #0004; }
+  .tools #rec-btn { background: #ff5a7a; color: #fff; }
+
+  #stage {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(2px 2px at 8% 18%, #fffc, transparent),
+      radial-gradient(2px 2px at 23% 8%, #fff9, transparent),
+      radial-gradient(3px 3px at 41% 22%, #fffa, transparent),
+      radial-gradient(2px 2px at 62% 10%, #fffc, transparent),
+      radial-gradient(3px 3px at 79% 25%, #fff9, transparent),
+      radial-gradient(2px 2px at 93% 12%, #fffc, transparent),
+      radial-gradient(ellipse at 50% 125%, #ffb3d9 0%, #8a5cf6 38%, #3b2a85 78%);
+  }
+  #stage { --kt: 34px; --kh: clamp(44px, 9vh, 84px); }
+  #keys {
+    position: absolute; top: var(--kt); left: 50%; transform: translateX(-50%);
+    width: min(94vw, calc(7 * min(12.5vw, 19vh) + 6 * clamp(4px, 1.2vw, 16px)));
+    height: var(--kh); display: flex; gap: 6px; padding: 6px;
+    border-radius: 18px; background: #ffffff1f; border: 2px solid #ffffff40; touch-action: none;
+  }
+  #keys button {
+    flex: 1; border: 0; border-radius: 12px; padding: 0; touch-action: none;
+    background: var(--k); color: #ffffffd0; font-size: calc(var(--kh) * .32); font-weight: 900;
+    box-shadow: inset 0 -6px 0 #0003, 0 3px 0 #0004; transition: transform .05s, filter .05s;
+  }
+  #keys button.down { transform: translateY(3px); filter: brightness(1.35); box-shadow: inset 0 -2px 0 #0003, 0 0 18px var(--k); }
+  #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 15%, var(--fc, #fff) 0%, transparent 65%); }
+  #flash.on { animation: flash .25s ease-out; }
+  #beats { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+  #beats i { width: 14px; height: 14px; border-radius: 50%; background: #ffffff30; transition: background .06s, box-shadow .06s; }
+  #beats i.on { background: #ffe066; box-shadow: 0 0 12px #ffe066; }
+  #hint {
+    position: absolute; top: 34%; left: 0; right: 0; text-align: center;
+    font-size: clamp(18px, 3vw, 30px); font-weight: 800; color: #ffffffcc; pointer-events: none;
+  }
+  #slots { position: absolute; inset: calc(var(--kt) + var(--kh) + 14px) 0 0 0; display: flex; justify-content: center; align-items: flex-end; gap: clamp(4px, 1.2vw, 16px); padding: 0 2vw 2vh; }
+  .slot { position: relative; width: min(12.5vw, 19vh); height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .slot .figure { position: relative; width: 100%; aspect-ratio: 100 / 140; display: none; }
+  .slot.filled .figure { display: block; }
+  .slot .wrap { width: 100%; height: 100%; transform-origin: 50% 92%; cursor: pointer; }
+  .slot .ctrl {
+    --b: min(6vw, 7vh, 46px);
+    display: none; flex-direction: column; gap: 6px; padding: 6px; margin-bottom: 16px;
+    border-radius: 999px; background: #ffffff22; border: 2px solid #ffffff44;
+  }
+  .slot.filled .ctrl { display: flex; }
+  .slot .ctrl button {
+    width: var(--b); height: var(--b); border-radius: 50%; border: 0; padding: 0;
+    display: grid; place-items: center; line-height: 1;
+    background: #fff; color: #3b2a85; font-size: calc(var(--b) * .48); font-weight: 900; box-shadow: 0 3px 0 #0004;
+  }
+  .slot .ctrl button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0004; }
+  .slot .ctrl .c-mute.on { background: #ff5a7a; }
+  .slot .ctrl .c-solo.on { background: #ffe066; }
+  .slot .ctrl .c-del { color: #ff5a7a; }
+  .slot .zzz { position: absolute; top: 4%; left: 8%; font-weight: 900; font-size: clamp(14px, 2vw, 22px); display: none; animation: zzz 1.6s ease-in-out infinite; }
+  .slot.silent .zzz { display: block; }
+  .slot.silent .monster { filter: grayscale(.85) brightness(.75); }
+  .slot .hint-ring {
+    width: 80%; aspect-ratio: 1; margin-bottom: 4%; border: 3px dashed #ffffff66; border-radius: 50%;
+    display: grid; place-items: center; font-size: clamp(22px, 4vw, 44px); color: #ffffff88; font-weight: 900;
+  }
+  .slot.filled .hint-ring { display: none; }
+  .slot.drop .hint-ring { border-color: #ffe066; color: #ffe066; background: #ffe06622; }
+  .slot.drop .figure { filter: brightness(1.2); }
+  .slot .pad { width: 112%; height: min(3vw, 5vh); border-radius: 50%; background: #0000002e; margin-top: -2.5%; }
+  .slot.filled .pad { background: radial-gradient(#ffffff70 0%, #ffffff00 70%); }
+  .slot .name { font-weight: 800; font-size: clamp(12px, 1.8vw, 20px); height: 1.5em; line-height: 1.5em; text-shadow: 0 2px 0 #0005; white-space: nowrap; }
+
+  .monster { width: 100%; height: 100%; display: block; overflow: visible; }
+  .monster .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; animation-delay: var(--blink, 0s); }
+  .monster .pupil { fill: #2b2b2b; }
+  .monster .mouth { fill: #6b1d2a; }
+  .monster .cheek { fill: #ff8fa3; opacity: .55; }
+  .monster .sleep { fill: none; stroke: #2b2b2b; stroke-width: 2.5; stroke-linecap: round; display: none; }
+  .slot.silent .monster .eye { display: none; }
+  .slot.silent .monster .sleep { display: inline; }
+
+  footer {
+    background: #fff; color: #3b2a85; border-radius: 24px 24px 0 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  }
+  .pal {
+    position: relative; width: min(10.5vw, 96px, 14vh); padding: 4px 2px 2px; border-radius: 16px; background: #f2edff;
+    display: flex; flex-direction: column; align-items: center; touch-action: none; cursor: grab;
+  }
+  .pal .art { width: 72%; aspect-ratio: 100 / 140; pointer-events: none; }
+  .pal .n { font-weight: 800; font-size: clamp(11px, 1.5vw, 16px); white-space: nowrap; pointer-events: none; }
+  .pal.used { opacity: .3; cursor: default; }
+  .pal.shake { animation: shake .3s; }
+  .pal .del {
+    position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; border-radius: 50%;
+    border: 0; padding: 0; background: #ff5a7a; color: #fff; font-size: 13px; box-shadow: 0 2px 0 #0003;
+  }
+  .ghost { position: fixed; z-index: 50; width: min(12vw, 19vh); aspect-ratio: 100 / 140; transform: translate(-50%, -60%) scale(1.1); pointer-events: none; filter: drop-shadow(0 10px 10px #0006); }
+
+  #rec { position: fixed; inset: 0; z-index: 60; background: #1a1240e6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  #rec-big { font-size: min(28vw, 28vh); font-weight: 900; line-height: 1; }
+  #rec-text { font-size: clamp(18px, 3vw, 30px); font-weight: 800; text-align: center; padding: 0 16px; }
+  #rec-bar { width: min(70vw, 600px); height: 18px; background: #ffffff30; border-radius: 9px; overflow: hidden; }
+  #rec-bar i { display: block; height: 100%; width: 0; background: #ff5a7a; }
+  #rec-cancel { border: 0; border-radius: 999px; padding: 10px 22px; background: #fff; color: #3b2a85; font-weight: 800; font-size: 18px; }
+
+  #loading { position: fixed; inset: 0; z-index: 70; background: #241a52; display: grid; place-items: center; font-size: 28px; font-weight: 800; }
+  #toast {
+    position: fixed; top: 16px; left: 50%; transform: translate(-50%, -150%); z-index: 80;
+    background: #fff; color: #3b2a85; font-weight: 800; padding: 12px 20px; border-radius: 999px;
+    box-shadow: 0 6px 20px #0005; transition: transform .25s; max-width: 90vw; text-align: center;
+  }
+  #toast.show { transform: translate(-50%, 0); }
+  [hidden] { display: none !important; }
+  @media (max-height: 520px) {
+    header { padding: 4px 12px; }
+    h1 { font-size: 18px; }
+    .tools button { padding: 6px 12px; font-size: 13px; }
+    footer { padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
+    .pal .n { font-size: 10px; }
+    #stage { --kt: 6px; --kh: 34px; }
+    #beats { display: none; }
+    #keys { padding: 4px; gap: 4px; border-radius: 12px; }
+    #keys button { border-radius: 8px; }
+    #slots { inset: calc(var(--kt) + var(--kh) + 8px) 0 0 0; }
+    .slot { width: min(12.5vw, 16vh); }
+    .slot .ctrl { --b: min(6vw, 5.5vh); gap: 3px; padding: 3px; margin-bottom: 6px; }
+  }
+
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+  @keyframes zzz { 0%, 100% { transform: translateY(0); opacity: .6; } 50% { transform: translateY(-8px); opacity: 1; } }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  @keyframes flash { from { opacity: .45; } to { opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🎵 節奏小怪獸</h1>
+    <div class="tools">
+      <button id="random-btn">🎲 隨便排</button>
+      <button id="clear-btn">🧹 全部下台</button>
+      <button id="rec-btn">🎤 錄我的聲音</button>
+      <button id="fs-btn" aria-label="全螢幕">⛶</button>
+    </div>
+  </header>
+  <main id="stage">
+    <div id="flash"></div>
+    <div id="beats"></div>
+    <div id="keys" aria-label="鋼琴長條：按一下或按住彈鋼琴"></div>
+    <div id="hint">把下面的小怪獸拖上舞台，或點一下！</div>
+    <div id="slots"></div>
+  </main>
+  <footer id="palette"></footer>
+</div>
+
+<div id="rec" hidden>
+  <div id="rec-big"></div>
+  <div id="rec-text"></div>
+  <div id="rec-bar"><i></i></div>
+  <button id="rec-cancel">取消</button>
+</div>
+<div id="loading">載入中…</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ---------- Timing ----------
+const BPM = 110;
+const BEAT = 60 / BPM;
+const BEATS = 8;                 // one loop = 2 bars of 4/4
+const LOOP = BEAT * BEATS;
+const SLOT_COUNT = 7;
+const MAX_CUSTOM = 6;
+const LOOKAHEAD = 1.5;           // seconds scheduled ahead; survives 1 s background-tab timer throttling
+
+const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+const master = ctx.createGain();
+master.gain.value = 0.7;
+const comp = ctx.createDynamicsCompressor();
+comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.2;
+master.connect(comp).connect(ctx.destination);
+
+// ---------- Music ----------
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+// Am – F – C – G, two beats each
+const CHORDS = [
+  { root: 45, pad: [57, 60, 64] },
+  { root: 41, pad: [57, 60, 65] },
+  { root: 48, pad: [55, 60, 64] },
+  { root: 43, pad: [55, 59, 62] },
+];
+const chordAt = beat => CHORDS[Math.floor(beat / 2) % 4];
+
+function env(g, t, peak, attack, decay) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+}
+function noiseBuf(oc) {
+  const b = oc.createBuffer(1, oc.sampleRate, oc.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+function noiseHit(oc, out, nb, t, { type, freq, q = 1, peak, decay }) {
+  const s = oc.createBufferSource(); s.buffer = nb;
+  const f = oc.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = oc.createGain(); env(g, t, peak, 0.002, decay);
+  s.connect(f).connect(g).connect(out);
+  s.start(t); s.stop(t + decay + 0.05);
+}
+function tone(oc, out, t, { type = 'sine', freq, peak, attack = 0.005, decay, filter }) {
+  const o = oc.createOscillator(); o.type = type; o.frequency.value = freq;
+  const g = oc.createGain(); env(g, t, peak, attack, decay);
+  if (filter) {
+    const f = oc.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filter;
+    o.connect(f).connect(g);
+  } else o.connect(g);
+  g.connect(out);
+  o.start(t); o.stop(t + attack + decay + 0.05);
+}
+
+const INSTRUMENTS = {
+  kick(oc, out) {
+    for (const b of [0, 1.5, 2, 4, 5.5, 6, 6.5]) {
+      const t = b * BEAT;
+      const o = oc.createOscillator(), g = oc.createGain();
+      o.frequency.setValueAtTime(160, t);
+      o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      env(g, t, 1, 0.003, 0.4);
+      o.connect(g).connect(out); o.start(t); o.stop(t + 0.5);
+    }
+  },
+  hats(oc, out) {
+    const nb = noiseBuf(oc);
+    for (let i = 0; i < 16; i++) {
+      noiseHit(oc, out, nb, i * 0.5 * BEAT, { type: 'highpass', freq: 7500, peak: i % 2 ? 0.35 : 0.18, decay: 0.05 });
+    }
+    for (const b of [1, 3, 5, 7]) {
+      const t = b * BEAT;
+      noiseHit(oc, out, nb, t, { type: 'bandpass', freq: 1900, q: 0.8, peak: 0.9, decay: 0.18 });
+      tone(oc, out, t, { type: 'triangle', freq: 200, peak: 0.5, attack: 0.002, decay: 0.08 });
+    }
+  },
+  clap(oc, out) {
+    const nb = noiseBuf(oc);
+    for (const b of [1, 3, 3.75, 5, 7, 7.5]) {
+      const t = b * BEAT;
+      for (const d of [0, 0.012, 0.024]) {
+        noiseHit(oc, out, nb, t + d, { type: 'bandpass', freq: 1300, q: 1.5, peak: 0.7, decay: d === 0.024 ? 0.16 : 0.02 });
+      }
+    }
+    for (let i = 0; i < 32; i++) {
+      noiseHit(oc, out, nb, i * 0.25 * BEAT, { type: 'highpass', freq: 5000, peak: i % 4 === 2 ? 0.25 : 0.1, decay: 0.04 });
+    }
+  },
+  bass(oc, out) {
+    const pat = [0, 12, 0, 12];
+    for (let i = 0; i < 16; i++) {
+      const b = i * 0.5, t = b * BEAT;
+      const f = mtof(chordAt(b).root + pat[i % 4]);
+      const saw = oc.createOscillator(); saw.type = 'sawtooth'; saw.frequency.value = f;
+      const sub = oc.createOscillator(); sub.frequency.value = pat[i % 4] ? f / 2 : f;
+      const lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 6;
+      lp.frequency.setValueAtTime(1400, t);
+      lp.frequency.exponentialRampToValueAtTime(220, t + 0.2);
+      const g = oc.createGain(); env(g, t, 0.7, 0.005, 0.26);
+      saw.connect(lp); sub.connect(lp); lp.connect(g).connect(out);
+      for (const o of [saw, sub]) { o.start(t); o.stop(t + 0.32); }
+    }
+  },
+  pad(oc, out) {
+    for (let c = 0; c < 4; c++) {
+      const t = c * 2 * BEAT, dur = 2 * BEAT;
+      const g = oc.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t + 0.12);
+      g.gain.setValueAtTime(0.25, t + dur - 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
+      const lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
+      lp.connect(g).connect(out);
+      for (const n of CHORDS[c].pad) {
+        for (const det of [-8, 8]) {
+          const o = oc.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mtof(n); o.detune.value = det;
+          o.connect(lp); o.start(t); o.stop(t + dur + 0.3);
+        }
+      }
+    }
+  },
+  bell(oc, out) {
+    const melody = [[0, 76], [0.75, 72], [1.5, 69], [2, 72], [2.5, 77], [3.25, 76], [4, 79], [4.75, 76], [5.5, 72], [6, 74], [6.5, 71], [7, 74], [7.5, 79]];
+    for (const [b, n] of melody) {
+      const t = b * BEAT, f = mtof(n);
+      const car = oc.createOscillator(); car.frequency.value = f;
+      const mod = oc.createOscillator(); mod.frequency.value = f * 3.5;
+      const mg = oc.createGain();
+      mg.gain.setValueAtTime(f * 2, t);
+      mg.gain.exponentialRampToValueAtTime(f * 0.05, t + 0.8);
+      mod.connect(mg).connect(car.frequency);
+      const g = oc.createGain(); env(g, t, 0.35, 0.003, 1.1);
+      car.connect(g).connect(out);
+      for (const o of [car, mod]) { o.start(t); o.stop(t + 1.2); }
+    }
+  },
+  arp(oc, out) {
+    const order = [0, 1, 2, 3, 2, 1, 0, 1];
+    for (let i = 0; i < 32; i++) {
+      const b = i * 0.25, p = chordAt(b).pad;
+      const notes = [p[0] + 12, p[1] + 12, p[2] + 12, p[0] + 24];
+      tone(oc, out, b * BEAT, { type: 'square', freq: mtof(notes[order[i % 8]]), peak: 0.18, attack: 0.004, decay: 0.11, filter: 2800 });
+    }
+  },
+  choir(oc, out) {
+    const bus = oc.createGain();
+    for (const [freq, gain] of [[800, 1], [1150, 0.5], [2900, 0.25]]) {   // "ah" formants
+      const bp = oc.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 6;
+      const fg = oc.createGain(); fg.gain.value = gain * 3;
+      bus.connect(bp).connect(fg).connect(out);
+    }
+    const lfo = oc.createOscillator(); lfo.frequency.value = 5.5;
+    const lg = oc.createGain(); lg.gain.value = 12;
+    lfo.connect(lg); lfo.start(0); lfo.stop(LOOP + 1.5);
+    for (const [b, n, len] of [[0, 69, 1.75], [2, 72, 1.75], [4, 76, 1.75], [6, 74, 1], [7, 71, 0.9]]) {
+      const t = b * BEAT, dur = len * BEAT;
+      const g = oc.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.15);
+      g.gain.setValueAtTime(0.5, t + dur);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.3);
+      g.connect(bus);
+      for (const det of [-10, 0, 10]) {
+        const o = oc.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mtof(n); o.detune.value = det;
+        lg.connect(o.detune); o.connect(g); o.start(t); o.stop(t + dur + 0.35);
+      }
+    }
+  },
+};
+
+function normalize(d, targetRms = 0.15) {
+  let sum = 0, peak = 0;
+  for (let i = 0; i < d.length; i++) { sum += d[i] * d[i]; peak = Math.max(peak, Math.abs(d[i])); }
+  const rms = Math.sqrt(sum / d.length);
+  if (!peak) return;
+  const g = Math.min(targetRms / rms, 0.95 / peak);
+  for (let i = 0; i < d.length; i++) d[i] *= g;
+}
+
+// Render one loop offline; the tail past the loop end is folded back onto the start so it loops seamlessly.
+async function renderLoop(build) {
+  const sr = 44100, tail = 1.5;
+  const len = Math.round(LOOP * sr), total = Math.ceil((LOOP + tail) * sr);
+  const oc = new OfflineAudioContext(1, total, sr);
+  const out = oc.createGain(); out.connect(oc.destination);
+  build(oc, out);
+  const src = (await oc.startRendering()).getChannelData(0);
+  const res = ctx.createBuffer(1, len, sr);
+  const dst = res.getChannelData(0);
+  dst.set(src.subarray(0, len));
+  for (let i = len; i < total; i++) dst[(i - len) % len] += src[i];
+  normalize(dst);
+  return res;
+}
+
+// ---------- Characters ----------
+const BUILTIN = [
+  { id: 'kick',  name: '咚咚', color: '#ff5a5f', shape: 'circle',   acc: 'horns',      vol: 1 },
+  { id: 'hats',  name: '嚓嚓', color: '#ff9f1c', shape: 'square',   acc: 'spikes',     vol: 0.8 },
+  { id: 'clap',  name: '啪啪', color: '#ffd23f', shape: 'triangle', acc: 'hat',        vol: 0.7 },
+  { id: 'bass',  name: '啵啵', color: '#9b5de5', shape: 'blob',     acc: 'headphones', vol: 0.9 },
+  { id: 'pad',   name: '嗡嗡', color: '#4d96ff', shape: 'tall',     acc: 'sprout',     vol: 0.6 },
+  { id: 'bell',  name: '叮叮', color: '#2ec4b6', shape: 'oval',     acc: 'antenna',    vol: 0.8 },
+  { id: 'arp',   name: '嘟嘟', color: '#6bcb77', shape: 'square',   acc: 'bow',        vol: 0.55 },
+  { id: 'choir', name: '啊啊', color: '#ff7eb6', shape: 'circle',   acc: 'crown',      vol: 0.75 },
+];
+const customs = [];
+const allChars = () => BUILTIN.concat(customs);
+
+const SHAPES = {
+  circle:   { body: c => `<circle cx="50" cy="70" r="42" fill="${c}"/>`, top: 28, face: 64 },
+  square:   { body: c => `<rect x="10" y="28" width="80" height="84" rx="20" fill="${c}"/>`, top: 28, face: 62 },
+  triangle: { body: c => `<path d="M50 16 Q57 16 61 25 L94 98 Q100 112 85 112 L15 112 Q0 112 6 98 L39 25 Q43 16 50 16Z" fill="${c}"/>`, top: 18, face: 74 },
+  blob:     { body: c => `<ellipse cx="50" cy="78" rx="46" ry="34" fill="${c}"/>`, top: 44, face: 74 },
+  tall:     { body: c => `<rect x="22" y="14" width="56" height="98" rx="28" fill="${c}"/>`, top: 14, face: 50 },
+  oval:     { body: c => `<ellipse cx="50" cy="66" rx="38" ry="46" fill="${c}"/>`, top: 20, face: 60 },
+};
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = v => Math.max(0, Math.min(255, Math.round(v * (1 + amt))));
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => f(v).toString(16).padStart(2, '0')).join('');
+}
+
+function accBack(acc, s, dark) {
+  const T = s.top, F = s.face;
+  switch (acc) {
+    case 'horns':
+      return `<path d="M33 ${T + 6} L27 ${T - 12} L43 ${T + 2}Z M67 ${T + 6} L73 ${T - 12} L57 ${T + 2}Z" fill="#fff4d6" stroke="${dark}" stroke-width="2" stroke-linejoin="round"/>`;
+    case 'spikes': {
+      let d = `M22 ${T + 8}`;
+      for (let k = 0; k <= 7; k++) d += ` L${22 + k * 8} ${k % 2 ? T + 4 : T - 10}`;
+      return `<path d="${d} L78 ${T + 8}Z" fill="${dark}"/>`;
+    }
+    case 'headphones':
+      return `<path d="M8 ${F - 4} Q8 ${T - 14} 50 ${T - 14} Q92 ${T - 14} 92 ${F - 4}" fill="none" stroke="#333" stroke-width="6" stroke-linecap="round"/>`;
+    case 'sprout':
+      return `<path d="M50 ${T + 4} Q48 ${T - 8} 50 ${T - 14}" stroke="#3a9d4b" stroke-width="4" fill="none"/>
+        <path d="M50 ${T - 14} Q38 ${T - 28} 30 ${T - 16} Q40 ${T - 8} 50 ${T - 14}Z M50 ${T - 14} Q62 ${T - 28} 70 ${T - 16} Q60 ${T - 8} 50 ${T - 14}Z" fill="#6bcb77"/>`;
+    case 'antenna':
+      return `<path d="M50 ${T + 4} L50 ${T - 14}" stroke="${dark}" stroke-width="3"/><circle cx="50" cy="${T - 18}" r="6" fill="#ffe066"/>`;
+    case 'crown':
+      return `<path d="M30 ${T + 8} L30 ${T - 10} L40 ${T - 1} L50 ${T - 14} L60 ${T - 1} L70 ${T - 10} L70 ${T + 8}Z" fill="#ffd166" stroke="#e0a800" stroke-width="2" stroke-linejoin="round"/>`;
+    default:
+      return '';
+  }
+}
+function accFront(acc, s) {
+  const T = s.top, F = s.face;
+  switch (acc) {
+    case 'hat': {
+      const hw = y => (13 * (y - (T - 30)) / 35).toFixed(1);
+      return `<path d="M50 ${T - 30} L37 ${T + 5} L63 ${T + 5}Z" fill="#ff4fa3"/>
+        <path d="M${50 - hw(T - 16)} ${T - 16} L${50 + +hw(T - 16)} ${T - 16} M${50 - hw(T - 4)} ${T - 4} L${50 + +hw(T - 4)} ${T - 4}" stroke="#fff" stroke-width="3"/>
+        <circle cx="50" cy="${T - 30}" r="5" fill="#fff"/>`;
+    }
+    case 'headphones':
+      return `<rect x="0" y="${F - 16}" width="14" height="26" rx="6" fill="#333"/><rect x="86" y="${F - 16}" width="14" height="26" rx="6" fill="#333"/>
+        <rect x="3" y="${F - 12}" width="8" height="18" rx="4" fill="#ff4fa3"/><rect x="89" y="${F - 12}" width="8" height="18" rx="4" fill="#ff4fa3"/>`;
+    case 'bow':
+      return `<g transform="translate(68 ${T + 6})"><path d="M0 0 L-12 -8 L-12 8Z M0 0 L12 -8 L12 8Z" fill="#ff4fa3"/><circle r="4" fill="#ff86c3"/></g>`;
+    case 'mic':
+      return `<g transform="translate(82 94) rotate(-25)"><rect x="-3" y="0" width="6" height="18" rx="2" fill="#444"/><circle cx="0" cy="-2" r="7" fill="#ccc" stroke="#444" stroke-width="2"/></g>`;
+    default:
+      return '';
+  }
+}
+
+function monsterSVG(ch) {
+  const s = SHAPES[ch.shape], dark = shade(ch.color, -0.3), F = s.face;
+  return `<svg class="monster" viewBox="0 -20 100 140" style="--blink:${(-Math.random() * 4.5).toFixed(2)}s">
+    <ellipse cx="34" cy="113" rx="11" ry="6" fill="${dark}"/><ellipse cx="66" cy="113" rx="11" ry="6" fill="${dark}"/>
+    ${accBack(ch.acc, s, dark)}
+    ${s.body(ch.color)}
+    <g transform="translate(50 ${F})">
+      <ellipse class="cheek" cx="-24" cy="10" rx="6" ry="3.5"/><ellipse class="cheek" cx="24" cy="10" rx="6" ry="3.5"/>
+      <g class="eye"><ellipse cx="-13" cy="0" rx="8" ry="9.5" fill="#fff"/><circle class="pupil" cx="-12" cy="1.5" r="4.5"/></g>
+      <g class="eye"><ellipse cx="13" cy="0" rx="8" ry="9.5" fill="#fff"/><circle class="pupil" cx="12" cy="1.5" r="4.5"/></g>
+      <path class="sleep" d="M-20 1 Q-13 6 -6 1 M6 1 Q13 6 20 1"/>
+      <ellipse class="mouth" cx="0" cy="16" rx="7" ry="2.5"/>
+    </g>
+    ${accFront(ch.acc, s)}
+  </svg>`;
+}
+
+// ---------- Engine ----------
+const $ = sel => document.querySelector(sel);
+const slots = [];
+let clock = null;      // { origin }: loop n starts at origin + n * LOOP
+let nextBar = 0;       // start time of the first loop not yet scheduled
+let recording = null;
+
+function startClock(at) {
+  clock = { origin: at };
+  nextBar = at;
+}
+
+function playAt(s, when, offset) {
+  const src = ctx.createBufferSource();
+  src.buffer = s.char.buffer;
+  src.connect(s.gain);
+  src.start(when, offset);
+  src.stop(when + LOOP - offset);
+  s.sources.push(src);
+  src.onended = () => {
+    const i = s.sources.indexOf(src);
+    if (i >= 0) s.sources.splice(i, 1);
+  };
+}
+
+function tick() {
+  if (!clock) return;
+  if (!slots.some(s => s.char) && !recording) { clock = null; return; }
+  const now = ctx.currentTime;
+  while (nextBar < now + LOOKAHEAD) {
+    if (nextBar + LOOP > now) {
+      const when = Math.max(nextBar, now), off = when - nextBar;
+      for (const s of slots) if (s.char) playAt(s, when, off);
+    }
+    nextBar += LOOP;
+  }
+}
+
+// A character placed mid-loop joins immediately at the matching position, plus any loops already scheduled ahead.
+function joinSlot(s) {
+  const now = ctx.currentTime + 0.02;
+  let barStart = clock.origin + Math.floor((now - clock.origin) / LOOP) * LOOP;
+  if (barStart < clock.origin) barStart = clock.origin;
+  for (let b = barStart; b < nextBar - 1e-6; b += LOOP) {
+    const when = Math.max(b, now), off = when - b;
+    if (LOOP - off > 0.05) playAt(s, when, off);
+  }
+}
+
+let soloSlot = null;
+const audible = s => !!s.char && (soloSlot ? soloSlot === s : !s.muted);
+
+function place(s, ch) {
+  ctx.resume();
+  if (s.char) clearSlot(s);
+  s.char = ch;
+  s.muted = false;
+  s.level = 0;
+  s.gain = ctx.createGain();
+  s.gain.gain.value = audible(s) ? ch.vol : 0;
+  s.analyser = ctx.createAnalyser();
+  s.analyser.fftSize = 1024;
+  s.gain.connect(s.analyser).connect(master);
+  if (!clock) startClock(ctx.currentTime + 0.06);
+  else joinSlot(s);
+  tick();
+  renderSlot(s);
+  refreshPalette();
+}
+
+function clearSlot(s) {
+  if (!s.char) return;
+  const { gain, analyser, sources } = s;
+  gain.gain.cancelScheduledValues(ctx.currentTime);
+  gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+  setTimeout(() => {
+    for (const src of sources) { try { src.stop(); } catch (e) { /* already stopped */ } }
+    gain.disconnect();
+    analyser.disconnect();
+  }, 200);
+  s.char = s.gain = s.analyser = null;
+  s.sources = [];
+  s.muted = false;
+  if (soloSlot === s) soloSlot = null;
+  renderSlot(s);
+  applyMix();
+  refreshPalette();
+}
+
+// Solo overrides individual mutes; mute states are kept and come back when solo ends.
+function applyMix() {
+  for (const s of slots) {
+    if (s.char) s.gain.gain.setTargetAtTime(audible(s) ? s.char.vol : 0, ctx.currentTime, 0.02);
+    syncSlotState(s);
+  }
+}
+
+function syncSlotState(s) {
+  s.el.classList.toggle('silent', !!s.char && !audible(s));
+  s.muteBtn.classList.toggle('on', !!s.char && s.muted);
+  s.soloBtn.classList.toggle('on', !!s.char && soloSlot === s);
+}
+
+function toggleMute(s) {
+  if (!s.char) return;
+  s.muted = !s.muted;
+  if (s.muted && soloSlot === s) soloSlot = null;
+  applyMix();
+}
+
+function toggleSolo(s) {
+  if (!s.char) return;
+  soloSlot = soloSlot === s ? null : s;
+  if (soloSlot) s.muted = false;
+  applyMix();
+}
+
+// ---------- UI ----------
+function buildStage() {
+  $('#beats').innerHTML = '<i></i>'.repeat(BEATS);
+  const root = $('#slots');
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    const el = document.createElement('div');
+    el.className = 'slot';
+    el.innerHTML = `<div class="ctrl">
+        <button class="c-mute" aria-label="靜音" title="靜音">🔇</button>
+        <button class="c-solo" aria-label="只聽牠" title="只聽牠">🎧</button>
+        <button class="c-del" aria-label="下台" title="下台">✕</button>
+      </div>
+      <div class="hint-ring">+</div>
+      <div class="figure"><div class="wrap"></div><div class="zzz">Zzz</div></div>
+      <div class="pad"></div><div class="name"></div>`;
+    const s = {
+      i, el, wrap: el.querySelector('.wrap'), nameEl: el.querySelector('.name'),
+      muteBtn: el.querySelector('.c-mute'), soloBtn: el.querySelector('.c-solo'),
+      char: null, gain: null, analyser: null, sources: [], muted: false, level: 0, mouth: null,
+    };
+    s.wrap.addEventListener('click', () => toggleMute(s));
+    s.muteBtn.addEventListener('click', () => toggleMute(s));
+    s.soloBtn.addEventListener('click', () => toggleSolo(s));
+    el.querySelector('.c-del').addEventListener('click', () => clearSlot(s));
+    root.append(el);
+    slots.push(s);
+  }
+}
+
+function renderSlot(s) {
+  s.el.classList.toggle('filled', !!s.char);
+  syncSlotState(s);
+  s.wrap.innerHTML = s.char ? monsterSVG(s.char) : '';
+  s.wrap.style.transform = '';
+  s.nameEl.textContent = s.char ? s.char.name : '';
+  s.mouth = s.char ? s.wrap.querySelector('.mouth') : null;
+  $('#hint').hidden = slots.some(x => x.char);
+}
+
+const isUsed = ch => slots.some(s => s.char === ch);
+
+function renderPalette() {
+  const root = $('#palette');
+  root.innerHTML = '';
+  for (const ch of allChars()) {
+    const el = document.createElement('div');
+    el.className = 'pal';
+    el.dataset.id = ch.id;
+    el.innerHTML = `<div class="art">${monsterSVG(ch)}</div><span class="n">${ch.name}</span>` +
+      (ch.custom ? '<button class="del" aria-label="刪除">🗑</button>' : '');
+    el.addEventListener('pointerdown', e => onPaletteDown(e, el, ch));
+    if (ch.custom) el.querySelector('.del').addEventListener('click', () => deleteCustom(ch));
+    root.append(el);
+  }
+  refreshPalette();
+}
+
+function refreshPalette() {
+  for (const el of document.querySelectorAll('.pal')) {
+    const ch = allChars().find(c => c.id === el.dataset.id);
+    el.classList.toggle('used', !!ch && isUsed(ch));
+  }
+}
+
+function slotAt(x, y) {
+  return slots.find(s => {
+    const r = s.el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  });
+}
+
+function onPaletteDown(e, el, ch) {
+  if (e.target.closest('.del')) return;
+  ctx.resume();
+  if (isUsed(ch)) {
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    toast(`${ch.name} 已經在台上囉！`);
+    return;
+  }
+  e.preventDefault();
+  el.setPointerCapture(e.pointerId);
+  const sx = e.clientX, sy = e.clientY;
+  let ghost = null, over = null;
+  const setOver = s => {
+    if (over === s) return;
+    if (over) over.el.classList.remove('drop');
+    over = s;
+    if (over) over.el.classList.add('drop');
+  };
+  const move = ev => {
+    if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) {
+      ghost = document.createElement('div');
+      ghost.className = 'ghost';
+      ghost.innerHTML = monsterSVG(ch);
+      document.body.append(ghost);
+    }
+    if (ghost) {
+      ghost.style.left = ev.clientX + 'px';
+      ghost.style.top = ev.clientY + 'px';
+      setOver(slotAt(ev.clientX, ev.clientY) || null);
+    }
+  };
+  const up = ev => {
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('pointercancel', up);
+    const target = over;
+    setOver(null);
+    if (ghost) {
+      ghost.remove();
+      if (ev.type === 'pointerup' && target) place(target, ch);
+    } else if (ev.type === 'pointerup') {
+      const free = slots.find(s => !s.char);
+      if (free) place(free, ch);
+      else toast('舞台滿了！按 × 讓一個下台');
+    }
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+}
+
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---------- Animation ----------
+const td = new Float32Array(1024);
+function frame() {
+  const now = ctx.currentTime;
+  for (const s of slots) {
+    if (!s.char) continue;
+    s.analyser.getFloatTimeDomainData(td);
+    let sum = 0;
+    for (let i = 0; i < td.length; i++) sum += td[i] * td[i];
+    const rms = Math.sqrt(sum / td.length);
+    s.level += (rms - s.level) * (rms > s.level ? 0.6 : 0.15);
+    const open = Math.min(1, s.level * 5);
+    s.mouth.setAttribute('ry', (2.5 + open * 9).toFixed(1));
+    s.mouth.setAttribute('rx', (7 + open * 2).toFixed(1));
+    let hop = 0, sq = 0;
+    if (clock && audible(s) && now >= clock.origin) {
+      const p = ((now - clock.origin) / BEAT) % 1;
+      hop = (3 + open * 12) * Math.sin(Math.PI * p);
+      sq = 0.07 * Math.max(0, 1 - p * 6) * (0.3 + open);
+    }
+    s.wrap.style.transform = `translateY(${(-hop).toFixed(1)}px) scale(${(1 + sq).toFixed(3)}, ${(1 - sq).toFixed(3)})`;
+  }
+  const beat = clock && now >= clock.origin ? Math.floor((now - clock.origin) / BEAT) % BEATS : -1;
+  document.querySelectorAll('#beats i').forEach((d, i) => d.classList.toggle('on', i === beat));
+  if (recording) updateRecording(now);
+  requestAnimationFrame(frame);
+}
+
+// ---------- Piano bar ----------
+// Each key plays a big piano chord that follows the song's current chord; higher keys use higher voicings.
+// Holding a key repeats the chord on a 3-3-2 rhythm (16th steps 0, 3, 6 of every 2 beats).
+const KEY_COLORS = ['#ff5a5f', '#ff9f1c', '#ffd23f', '#6bcb77', '#2ec4b6', '#4d96ff', '#9b5de5', '#ff7eb6'];
+const SIXTEENTH = BEAT / 4;
+const PIANO_STEPS = [0, 3, 6];
+const pianoBuffers = new Map();
+const pianoBus = ctx.createGain();
+pianoBus.gain.value = 0.16;
+pianoBus.connect(master);
+const held = new Map();       // key index -> { next: {t, n} }
+let pianoOrigin = 0;          // rhythm grid origin when no loop clock is running
+
+function voicing(chord, k) {
+  const pcs = chord.pad.map(n => n % 12);
+  const tones = [];
+  for (let m = 52; tones.length < k + 4; m++) if (pcs.includes(m % 12)) tones.push(m);
+  return [chord.root - 12, chord.root, ...tones.slice(k, k + 4)];
+}
+
+function chordAtTime(t) {
+  if (!clock) return CHORDS[0];
+  const beat = Math.floor((t - clock.origin + 1e-3) / BEAT);
+  return chordAt(((beat % BEATS) + BEATS) % BEATS);
+}
+
+async function renderPianoNote(m) {
+  const sr = 44100, dur = 2.2, f = mtof(m);
+  const oc = new OfflineAudioContext(1, Math.ceil(sr * dur), sr);
+  const ring = Math.min(2.5, 1.2 * Math.pow(2, (60 - m) / 24));   // low notes ring longer
+  for (let k = 1; k <= 10; k++) {
+    const fk = f * k * Math.sqrt(1 + 0.0004 * k * k);              // slight string inharmonicity
+    if (fk > sr / 2 - 1000) break;
+    const dets = k <= 3 ? [-1.2, 1.2] : [0];
+    for (const det of dets) {
+      const o = oc.createOscillator(); o.frequency.value = fk; o.detune.value = det;
+      const g = oc.createGain();
+      g.gain.setValueAtTime(0, 0);
+      g.gain.linearRampToValueAtTime(0.6 / Math.pow(k, 1.1) / dets.length, 0.003);
+      g.gain.setTargetAtTime(0, 0.003, ring / (1 + 0.5 * (k - 1)) * 0.4);
+      o.connect(g).connect(oc.destination);
+      o.start(0); o.stop(dur);
+    }
+  }
+  noiseHit(oc, oc.destination, noiseBuf(oc), 0, { type: 'bandpass', freq: 2500, q: 1, peak: 0.25, decay: 0.02 });
+  const buf = await oc.startRendering();
+  const d = buf.getChannelData(0);
+  let peak = 0;
+  for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+  for (let i = 0; i < d.length; i++) d[i] *= 0.9 / peak;
+  return buf;
+}
+
+async function loadPiano() {
+  const notes = new Set();
+  for (const c of CHORDS) for (let k = 0; k < KEY_COLORS.length; k++) voicing(c, k).forEach(m => notes.add(m));
+  await Promise.all([...notes].map(async m => pianoBuffers.set(m, await renderPianoNote(m))));
+}
+
+function pianoHit(k, when, vel) {
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vel, when);
+  g.gain.setValueAtTime(vel, when + 0.32);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.5);
+  g.connect(pianoBus);
+  for (const m of voicing(chordAtTime(when), k)) {
+    const s = ctx.createBufferSource();
+    s.buffer = pianoBuffers.get(m);
+    s.connect(g);
+    s.start(when); s.stop(when + 0.55);
+  }
+  const delay = Math.max(0, (when - ctx.currentTime) * 1000);
+  setTimeout(() => flash(KEY_COLORS[k]), delay);
+  setTimeout(() => g.disconnect(), delay + 700);
+}
+
+function nextGridHit(after) {
+  const origin = clock ? clock.origin : pianoOrigin;
+  let n = Math.ceil((after - origin) / SIXTEENTH - 1e-6);
+  while (!PIANO_STEPS.includes(((n % 8) + 8) % 8)) n++;
+  return { t: origin + n * SIXTEENTH, n };
+}
+
+function pressKey(k) {
+  if (held.has(k)) return;
+  const now = ctx.currentTime;
+  if (!clock && held.size === 0) pianoOrigin = now;
+  pianoHit(k, now + 0.005, 1);
+  held.set(k, { next: nextGridHit(now + 0.12) });
+  keyEls[k].classList.add('down');
+}
+
+function releaseKey(k) {
+  held.delete(k);
+  keyEls[k].classList.remove('down');
+}
+
+function pianoTick() {
+  for (const [k, st] of held) {
+    while (st.next.t < ctx.currentTime + 0.1) {
+      pianoHit(k, Math.max(st.next.t, ctx.currentTime), ((st.next.n % 8) + 8) % 8 === 0 ? 1 : 0.75);
+      st.next = nextGridHit(st.next.t + 1e-4);
+    }
+  }
+}
+
+function flash(color) {
+  const f = $('#flash');
+  f.style.setProperty('--fc', color);
+  f.classList.remove('on');
+  void f.offsetWidth;
+  f.classList.add('on');
+}
+
+const keyEls = [];
+function buildKeys() {
+  const root = $('#keys');
+  KEY_COLORS.forEach((color, k) => {
+    const b = document.createElement('button');
+    b.style.setProperty('--k', color);
+    b.textContent = '♪';
+    b.setAttribute('aria-label', `鋼琴鍵 ${k + 1}`);
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      ctx.resume();
+      b.setPointerCapture(e.pointerId);
+      pressKey(k);
+    });
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, () => releaseKey(k));
+    root.append(b);
+    keyEls.push(b);
+  });
+}
+
+// ---------- Recording ----------
+const CAPTURE_WORKLET = `
+class Capture extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.buf = new Float32Array(4096); this.n = 0; this.t0 = 0; this.on = true;
+    this.port.onmessage = e => { if (e.data === 'stop') { this.flush(); this.on = false; } };
+  }
+  flush() {
+    if (this.n) { this.port.postMessage({ t: this.t0, d: this.buf.slice(0, this.n) }); this.n = 0; }
+  }
+  process(inputs) {
+    if (!this.on) return false;
+    const ch = inputs[0] && inputs[0][0];
+    if (!ch) return true;
+    if (this.n + ch.length > this.buf.length) this.flush();
+    if (this.n === 0) this.t0 = currentTime;
+    this.buf.set(ch, this.n); this.n += ch.length;
+    return true;
+  }
+}
+registerProcessor('capture', Capture);`;
+let workletReady = null;
+function ensureWorklet() {
+  if (!workletReady) {
+    const url = URL.createObjectURL(new Blob([CAPTURE_WORKLET], { type: 'application/javascript' }));
+    workletReady = ctx.audioWorklet.addModule(url);
+  }
+  return workletReady;
+}
+
+function click(t, accent) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'square';
+  o.frequency.value = accent ? 1600 : 1000;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(accent ? 0.2 : 0.1, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t + 0.05);
+  return o;
+}
+
+async function startRecording() {
+  if (recording) return;
+  if (customs.length >= MAX_CUSTOM) { toast(`最多 ${MAX_CUSTOM} 個自己的聲音，先刪掉一個吧`); return; }
+  ctx.resume();
+  if (!navigator.mediaDevices || !window.AudioWorkletNode) { toast('這個瀏覽器不能錄音'); return; }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true } });
+  } catch (err) {
+    console.warn(err);
+    toast('沒辦法使用麥克風，請允許瀏覽器使用麥克風');
+    return;
+  }
+  await ensureWorklet();
+  await ctx.resume();
+
+  const now = ctx.currentTime;
+  let t0;
+  if (!clock) {
+    t0 = now + 0.15 + 3 * BEAT;
+    startClock(t0);
+  } else {
+    t0 = clock.origin + Math.ceil((now + 3 * BEAT - clock.origin) / LOOP) * LOOP;
+  }
+  const src = ctx.createMediaStreamSource(stream);
+  const node = new AudioWorkletNode(ctx, 'capture', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1, channelCountMode: 'explicit' });
+  const sink = ctx.createGain();
+  sink.gain.value = 0;
+  src.connect(node).connect(sink).connect(ctx.destination);
+
+  const r = {
+    t0, stream, src, node, sink, chunks: [], clicks: [], finishing: false,
+    // Singing along to what is heard lags by roughly the output + processing latency.
+    shift: (ctx.outputLatency || 0) + (ctx.baseLatency || 0),
+  };
+  node.port.onmessage = e => r.chunks.push(e.data);
+  const first = t0 - Math.floor((t0 - now - 0.05) / BEAT) * BEAT;
+  for (let tb = first; tb < t0 + LOOP - 1e-3; tb += BEAT) {
+    const n = Math.round((tb - t0) / BEAT);
+    r.clicks.push(click(tb, ((n % 4) + 4) % 4 === 0));
+  }
+  recording = r;
+  tick();
+  $('#rec').hidden = false;
+  updateRecording(now);
+}
+
+function updateRecording(now) {
+  const r = recording;
+  const big = $('#rec-big'), text = $('#rec-text'), bar = $('#rec-bar i');
+  if (now < r.t0) {
+    const left = Math.ceil((r.t0 - now) / BEAT);
+    big.textContent = left <= 3 ? left : '🎵';
+    text.textContent = '準備好… 數到 1 之後開始唱、拍手或說話！';
+    bar.style.width = '0%';
+  } else if (now < r.t0 + LOOP) {
+    big.textContent = '🔴';
+    text.textContent = '錄音中！跟著節拍來～';
+    bar.style.width = ((now - r.t0) / LOOP * 100).toFixed(1) + '%';
+  } else {
+    big.textContent = '✨';
+    text.textContent = '做成小怪獸中…';
+    bar.style.width = '100%';
+    if (!r.finishing && now > r.t0 + LOOP + r.shift + 0.25) finishRecording();
+  }
+}
+
+function stopCapture(r) {
+  for (const o of r.clicks) { try { o.stop(); } catch (e) { /* already stopped */ } }
+  r.stream.getTracks().forEach(t => t.stop());
+  r.src.disconnect();
+  r.node.disconnect();
+  r.sink.disconnect();
+}
+
+function cancelRecording() {
+  if (!recording) return;
+  stopCapture(recording);
+  recording = null;
+  $('#rec').hidden = true;
+}
+
+async function finishRecording() {
+  const r = recording;
+  r.finishing = true;
+  r.node.port.postMessage('stop');
+  await new Promise(res => setTimeout(res, 150));
+  stopCapture(r);
+  recording = null;
+  $('#rec').hidden = true;
+
+  const sr = ctx.sampleRate, len = Math.round(LOOP * sr);
+  const pcm = new Float32Array(len);
+  const start = r.t0 + r.shift;
+  for (const { t, d } of r.chunks) {
+    const off = Math.round((t - start) * sr);
+    for (let i = 0; i < d.length; i++) {
+      const j = off + i;
+      if (j >= 0 && j < len) pcm[j] = d[i];
+    }
+  }
+  let peak = 0;
+  for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(pcm[i]));
+  if (peak < 0.02) { toast('好像沒有錄到聲音，再試一次吧！'); return; }
+  normalize(pcm, 0.18);
+  const fade = Math.round(0.005 * sr);
+  for (let i = 0; i < fade; i++) { const g = i / fade; pcm[i] *= g; pcm[len - 1 - i] *= g; }
+
+  const used = new Set(customs.map(c => c.color));
+  const colors = CUSTOM_COLORS.filter(c => !used.has(c));
+  const num = 1 + customs.reduce((m, c) => Math.max(m, parseInt(c.name.replace(/\D/g, ''), 10) || 0), 0);
+  const rec = {
+    id: 'rec-' + Date.now(),
+    name: `我的聲音${num}`,
+    color: colors[Math.floor(Math.random() * colors.length)] || CUSTOM_COLORS[0],
+    shape: Object.keys(SHAPES)[Math.floor(Math.random() * 6)],
+    sr, pcm,
+  };
+  const ch = makeCustom(rec);
+  customs.push(ch);
+  renderPalette();
+  try { await dbPut(rec); } catch (err) { console.warn(err); toast('這次的聲音沒辦法存起來，重新整理後會不見'); }
+  const free = slots.find(s => !s.char);
+  if (free) place(free, ch);
+  toast(`新的小怪獸「${ch.name}」來囉！`);
+}
+
+const CUSTOM_COLORS = ['#f15bb5', '#00bbf9', '#00f5d4', '#fee440', '#ff924c', '#c77dff', '#80ed99', '#ffadad'];
+function makeCustom(rec) {
+  const buffer = ctx.createBuffer(1, rec.pcm.length, rec.sr);
+  buffer.copyToChannel(rec.pcm, 0);
+  return { id: rec.id, name: rec.name, color: rec.color, shape: rec.shape, acc: 'mic', vol: 1, buffer, custom: true };
+}
+
+async function deleteCustom(ch) {
+  if (!confirm(`要刪掉「${ch.name}」嗎？`)) return;
+  const s = slots.find(x => x.char === ch);
+  if (s) clearSlot(s);
+  customs.splice(customs.indexOf(ch), 1);
+  renderPalette();
+  try { await dbDel(ch.id); } catch (err) { console.warn(err); }
+}
+
+// ---------- Storage ----------
+const DB_NAME = 'rhythm-monsters', STORE = 'recordings';
+let dbPromise = null;
+function idb() {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const q = indexedDB.open(DB_NAME, 1);
+      q.onupgradeneeded = () => q.result.createObjectStore(STORE, { keyPath: 'id' });
+      q.onsuccess = () => resolve(q.result);
+      q.onerror = () => reject(q.error);
+    });
+  }
+  return dbPromise;
+}
+async function dbTx(mode, fn) {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, mode);
+    const q = fn(tx.objectStore(STORE));
+    tx.oncomplete = () => resolve(q.result);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+const dbAll = () => dbTx('readonly', st => st.getAll());
+const dbPut = rec => dbTx('readwrite', st => st.put(rec));
+const dbDel = id => dbTx('readwrite', st => st.delete(id));
+
+// ---------- Boot ----------
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+async function init() {
+  buildStage();
+  buildKeys();
+  const [buffers] = await Promise.all([Promise.all(BUILTIN.map(c => renderLoop(INSTRUMENTS[c.id]))), loadPiano()]);
+  BUILTIN.forEach((c, i) => { c.buffer = buffers[i]; });
+  try {
+    const recs = await dbAll();
+    recs.sort((a, b) => a.id.localeCompare(b.id)).forEach(r => customs.push(makeCustom(r)));
+  } catch (err) {
+    console.warn('IndexedDB unavailable', err);
+  }
+  renderPalette();
+
+  document.addEventListener('pointerdown', () => { if (ctx.state !== 'running') ctx.resume(); }, { capture: true });
+  $('#random-btn').addEventListener('click', () => {
+    const pool = shuffle(allChars().filter(c => !isUsed(c)));
+    slots.filter(s => !s.char).forEach((s, i) => { if (pool[i]) place(s, pool[i]); });
+  });
+  $('#clear-btn').addEventListener('click', () => slots.forEach(clearSlot));
+  $('#rec-btn').addEventListener('click', startRecording);
+  $('#rec-cancel').addEventListener('click', cancelRecording);
+  const fs = $('#fs-btn');
+  if (document.fullscreenEnabled) {
+    fs.addEventListener('click', () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
+  } else {
+    fs.hidden = true;
+  }
+
+  setInterval(tick, 50);
+  setInterval(pianoTick, 25);
+  requestAnimationFrame(frame);
+  $('#loading').hidden = true;
+}
+
+init().catch(err => {
+  console.error(err);
+  $('#loading').textContent = '載入失敗：' + err.message;
+});
+</script>
+</body>
+</html>
